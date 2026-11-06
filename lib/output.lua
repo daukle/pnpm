@@ -72,6 +72,8 @@ local function render(spec, instance, lock_text, entries)
     .. "      text = " .. long_string(lock_text) .. ",\n"
     .. string.format("      pnpm = { version = %q, url = %q, sha256 = %q },\n",
                      spec.pnpm.version, spec.pnpm.url, spec.pnpm.sha256)
+    .. "      dependencies = " .. ranges_table(spec.packages) .. ",\n"
+    .. "      devDependencies = " .. ranges_table(spec.devPackages) .. ",\n"
     .. (spec.overrides == nil and "" or ("      overrides = " .. long_string(spec.overrides) .. ",\n"))
     .. "      entries = {\n"
     .. table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
