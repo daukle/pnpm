@@ -16,6 +16,16 @@ local function pinned_versions()
   return table.concat(out, ", ")
 end
 
+--- Whether this plugin pins `version`, for a caller that must answer with a blocker, not raise.
+function releases.is_pinned(version)
+  for _, release in ipairs(RELEASES) do
+    if release.version == version then return true end
+  end
+  return false
+end
+
+releases.pinned_versions = pinned_versions
+
 --- The pinned release of `version`, as `{ version, url, sha256 }`. Raises naming the pinned ones.
 function releases.of(version)
   for _, release in ipairs(RELEASES) do
