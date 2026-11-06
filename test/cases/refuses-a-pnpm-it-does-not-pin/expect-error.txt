@@ -1,0 +1,1 @@
+is not a release this plugin pins; it pins 9.15.9, 10.0.0, 10.34.9

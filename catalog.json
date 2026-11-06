@@ -1,0 +1,5 @@
+{
+  "detect": [],
+  "replaces": { "pnpm": { "dependencies": ["pnpm"] } },
+  "skip": []
+}
