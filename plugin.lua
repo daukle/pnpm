@@ -69,4 +69,4 @@ daukle.task{
   end,
 }
 
-daukle.translator{ tool = "pnpm", id = "pnpm", translate = translator.translate }
+daukle.translator{ tool = "npm", id = "pnpm", translate = translator.translate }
