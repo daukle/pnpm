@@ -140,11 +140,29 @@ run_case() {
   fi
 }
 
+run_unit() {
+  sandbox="$work/unit"
+  name=unit
+  mkdir -p "$sandbox/plugins/unit"
+  cp "$root/test/unit/plugin.lua" "$sandbox/plugins/unit/plugin.lua"
+  cp -R "$root/test/unit/tests" "$sandbox/plugins/unit/tests"
+  cp -R "$root/lib" "$sandbox/plugins/unit/lib"
+  printf 'schema = 1\nproject = "daukle/pnpm-unit"\nversion = "1.0.0"\n\n[modules]\n\n[plugins]\nunit = "./plugins/unit"\n\n[toolchains.unit]\n' \
+    > "$sandbox/daukle.toml"
+  if (cd "$sandbox" && "$daukle" unit:test </dev/null >stdout.txt 2>stderr.txt); then
+    passed=$((passed + 1))
+  else
+    show_stderr
+    fail unit "unit:test failed"
+  fi
+}
+
 rm -rf "$work"
 for case_dir in "$root"/test/cases/*/; do
   [ -d "$case_dir" ] || continue
   run_case "${case_dir%/}"
 done
 
+if [ -z "$only_case" ] || [ "$only_case" = unit ]; then run_unit; fi
 echo "$passed passed, $failed failed, $skipped skipped"
 [ "$failed" -eq 0 ]

@@ -20,7 +20,7 @@ end
 --- trailing `(peer@x)` suffix, and the tarball is the same with or without the suffix.
 local function without_version_6_decoration(key)
   local bare = string.gsub(key, "^/", "")
-  return (string.gsub(bare, "%b()$", ""))
+  return (string.gsub(bare, "%(.*$", ""))
 end
 
 local function unquoted(text)
@@ -57,7 +57,7 @@ local function resolution_of(key, text)
   return integrity
 end
 
---- The registry url pnpm fetches a package from, which version 9 implies rather than writes.
+--- The registry url pnpm fetches a package from, which versions 6.0 and 9.0 imply rather than write.
 local function registry_url(name, version)
   local unscoped = string.match(name, "^@[^/]+/(.+)$") or name
   return REGISTRY .. name .. "/-/" .. unscoped .. "-" .. version .. ".tgz"
@@ -66,6 +66,7 @@ end
 --- The entry with its url, or nil for a project directory, which has nothing to fetch.
 local function finished(entry)
   if entry.is_directory then return nil end
+  entry.name, entry.version = name_and_version(entry.path)
   if entry.integrity == nil then error('"' .. entry.path .. '" has no resolution', 0) end
   entry.url = registry_url(entry.name, entry.version)
   return entry
@@ -98,8 +99,7 @@ function lockfile.entries(text)
         current = nil
       else
         seen[path] = true
-        local name, package_version = name_and_version(path)
-        current = { path = path, name = name, version = package_version }
+        current = { path = path }
       end
     elseif field == "resolution" and current ~= nil then
       if is_directory_resolution(value) then
