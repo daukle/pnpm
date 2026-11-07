@@ -3,9 +3,13 @@
 local releases = {}
 
 local RELEASES = {
+  { version = "8.9.2", sha256 = "8d62573d93061f2722b7b48c9739e96cd4603c3ab153bc81c619dcb9861a214e" },
   { version = "9.15.9", sha256 = "cf86a7ad764406395d4286a6d09d730711720acc6d93e9dce9ac7ac4dc4a28a7" },
   { version = "10.0.0", sha256 = "43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948" },
+  { version = "10.33.4", sha256 = "8e70ddc6649b18bc3d895cf3a908c0291ea4c38039ad8722c47e018daf1e9cfc" },
   { version = "10.34.9", sha256 = "7e8a946108e7baab119e51d27c24d6178b46545422643dbc91e34e2f1ee32e0f" },
+  { version = "11.25.0", sha256 = "33dd0748f27e7916c4f1c8b6943461983e3453b06bbda6312a6280130b4881e5" },
+  { version = "11.28.5", sha256 = "1ef4e447a68713656064f3f174c0f44719960a043a3fe2299169d08cf1dbf8ee" },
 }
 
 releases.ENTRY = "package/bin/pnpm.cjs"
