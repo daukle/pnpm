@@ -20,4 +20,9 @@ packages = { vuepress = "2.0.0-rc.20" }
 pnpm runs from its own npm tarball on the provisioned node, so no corepack is involved. `overrides`
 is pnpm's override object as JSON text, written where pnpm reads it, `pnpm.overrides`.
 
+`peerPackages` and `optionalPackages` are package name to range, as `packages` is, and
+`peerPackagesMeta` is the `peerDependenciesMeta` object as JSON text. They are resolved from,
+recorded in the pins and written into the generated `package.json`, because a frozen install
+compares them with the lockfile's specifiers. Changing one needs a new resolve (`D-268`).
+
 The design is `superpowers/specs/2026-11-06-pnpm-resolver-design.md` in `daukle/docs` (`D-251`).

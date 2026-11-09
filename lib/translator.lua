@@ -16,7 +16,8 @@ local SURFACE = "NPM-SURFACE.md: dependencies"
 local function block_of(foreign)
   local config = foreign.config or {}
   local block = { version = config.version, pnpm = config.pnpm, packages = config.packages,
-                  devPackages = config.devPackages, overrides = config.overrides,
+                  devPackages = config.devPackages, overrides = config.overrides, peerPackages = config.peerPackages,
+                  optionalPackages = config.optionalPackages, peerPackagesMeta = config.peerPackagesMeta,
                   workspace = config.workspace }
   if foreign.instance ~= "node" then block["for"] = foreign.instance end
   return block, config.lock

@@ -1,9 +1,11 @@
 local output = daukle.require("lib/output")
 local overrides = daukle.require("lib/overrides")
+local object_text = daukle.require("lib/object_text")
 local releases = daukle.require("lib/releases")
 
 local KNOWN_KEYS = { version = true, pnpm = true, packages = true, devPackages = true, ["for"] = true,
-                     [output.PINNED_FROM] = true, [overrides.KEY] = true, workspace = true }
+                     [output.PINNED_FROM] = true, [overrides.KEY] = true, peerPackages = true, optionalPackages = true,
+                     peerPackagesMeta = true, workspace = true }
 
 local RESOLVE = '"daukle pnpm:resolve --resolve"'
 local PIN_FILE = "daukle/pnpm/" .. output.OUTPUT
@@ -109,6 +111,11 @@ local function checked_packages(config, key, in_workspace)
   return names, packages
 end
 
+local function list_of(config, key, in_workspace)
+  local names, ranges = checked_packages(config, key, in_workspace)
+  return { names = names, ranges = ranges }
+end
+
 --- Checks a block. Returns `{ version, pnpm, target, packages, devPackages, pinnedFrom, overrides, workspace }`,
 --- each package list as `{ names = sorted, ranges = name -> range }`.
 local function spec_of(config, version)
@@ -129,6 +136,10 @@ local function spec_of(config, version)
     devPackages = { names = dev_names, ranges = dev_ranges },
     pinnedFrom = config[output.PINNED_FROM],
     overrides = overrides.checked(config),
+    peerPackages = list_of(config, "peerPackages", in_workspace),
+    optionalPackages = list_of(config, "optionalPackages", in_workspace),
+    peerPackagesMeta = object_text.checked(config, "peerPackagesMeta", "pnpm's peerDependenciesMeta object",
+                                           '{"react": {"optional": true}}'),
     workspace = in_workspace,
   }
 end
@@ -150,10 +161,17 @@ local function stale(what)
   error(what .. " changed since the pins in " .. PIN_FILE .. " were resolved: run " .. RESOLVE .. " again", 0)
 end
 
+local function declares_nothing(spec)
+  for _, list in ipairs({ spec.packages, spec.devPackages, spec.peerPackages, spec.optionalPackages }) do
+    if #list.names > 0 then return false end
+  end
+  return true
+end
+
 --- Refuses a build whose ranges have no pins, or pins resolved from other ranges, another pnpm or
 --- other overrides: an ordinary build may not resolve, and the old closure would ignore the edit.
 local function refuse_unpinned(spec, resolving)
-  if resolving or (#spec.packages.names == 0 and #spec.devPackages.names == 0) then return end
+  if resolving or declares_nothing(spec) then return end
   if spec.pinnedFrom == nil then
     error("these packages have no pins yet, and a build installs only pinned packages: run "
           .. RESOLVE .. ", which writes " .. PIN_FILE, 0)
@@ -161,10 +179,13 @@ local function refuse_unpinned(spec, resolving)
   local changed = {}
   changed_names(spec.packages, spec.pinnedFrom.packages or {}, changed)
   changed_names(spec.devPackages, spec.pinnedFrom.devPackages or {}, changed)
+  changed_names(spec.peerPackages, spec.pinnedFrom.peerPackages or {}, changed)
+  changed_names(spec.optionalPackages, spec.pinnedFrom.optionalPackages or {}, changed)
   table.sort(changed)
   if #changed > 0 then stale("the ranges of " .. table.concat(changed, ", ")) end
   if spec.pnpm.version ~= spec.pinnedFrom.pnpm then stale('"pnpm"') end
   if spec.overrides ~= spec.pinnedFrom.overrides then stale(overrides.KEY) end
+  if spec.peerPackagesMeta ~= spec.pinnedFrom.peerPackagesMeta then stale('"peerPackagesMeta"') end
 end
 
 return { read = read, spec_of = spec_of, refuse_unpinned = refuse_unpinned }
