@@ -1,0 +1,14 @@
+schema = 1
+project = "daukle/pnpm-test"
+version = "1.0.0"
+
+[modules]
+
+[plugins]
+pnpm = "./plugins"
+
+[toolchains.pnpm]
+version = "22.15.0"
+pnpm = "10.34.9"
+workspace = true
+packages = { a = "https://example.com/a.tgz" }
