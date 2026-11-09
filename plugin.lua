@@ -6,7 +6,7 @@
 
 daukle.plugin{
   api = 8,
-  uses = { "provision", "exec", "write", "pin" },
+  uses = { "provision", "exec", "write", "pin", "json_parse" },
   --[[ The node release table is daukle/node's and is read rather than copied, so pnpm runs on the
        same node as the build. lib/runtimes calls no verb, so the rule that a required module runs
        under the DEPENDENT's uses has nothing to cover. ]]

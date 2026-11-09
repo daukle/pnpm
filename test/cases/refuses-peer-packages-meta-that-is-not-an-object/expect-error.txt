@@ -1,0 +1,1 @@
+must be pnpm's peerDependenciesMeta object as JSON text
