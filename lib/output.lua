@@ -59,6 +59,26 @@ local function meta_line(spec)
   return "      peerPackagesMeta = " .. exact_string(spec.peerPackagesMeta) .. ",\n"
 end
 
+local function binary_lines(binaries)
+  local hosts = {}
+  for host in pairs(binaries) do hosts[#hosts + 1] = host end
+  table.sort(hosts)
+  for index, host in ipairs(hosts) do
+    local binary = binaries[host]
+    hosts[index] = string.format("[%q] = { url = %q, sha256 = %q, file = %q }", host, binary.url, binary.sha256,
+                                 binary.file)
+  end
+  return table.concat(hosts, ", ")
+end
+
+--- The pinned pnpm as Lua: its one tarball, or a native release's binary per host.
+local function pnpm_pin(pnpm)
+  if pnpm.binaries ~= nil then
+    return string.format("{ version = %q, binaries = { %s } }", pnpm.version, binary_lines(pnpm.binaries))
+  end
+  return string.format("{ version = %q, url = %q, sha256 = %q }", pnpm.version, pnpm.url, pnpm.sha256)
+end
+
 --- The committed pin file: pnpm's lockfile verbatim, the pinned pnpm, and each package's url and
 --- sha256, set on the target toolchain, and what they were resolved from, set on the pnpm block.
 ---
@@ -86,8 +106,7 @@ local function render(spec, instance, lock_text, entries)
     .. "  if target ~= nil then\n"
     .. "    target.pnpmLock = {\n"
     .. "      text = " .. long_string(lock_text) .. ",\n"
-    .. string.format("      pnpm = { version = %q, url = %q, sha256 = %q },\n",
-                     spec.pnpm.version, spec.pnpm.url, spec.pnpm.sha256)
+    .. "      pnpm = " .. pnpm_pin(spec.pnpm) .. ",\n"
     .. "      dependencies = " .. ranges_table(spec.packages) .. ",\n"
     .. "      devDependencies = " .. ranges_table(spec.devPackages) .. ",\n"
     .. (spec.overrides == nil and "" or ("      overrides = " .. exact_string(spec.overrides) .. ",\n"))
