@@ -20,6 +20,14 @@ local function quoted_list(values)
   return "{ " .. table.concat(quoted, ", ") .. " }"
 end
 
+--- A text the build compares with its block, as a quoted string.
+---
+--- @implNote not a long bracket: Lua reads a CRLF inside one as LF, so a value from a CRLF
+--- package.json would never equal the pinned one and every build would call the pins stale.
+local function exact_string(text)
+  return string.format("%q", text)
+end
+
 local function ranges_table(list)
   local lines = {}
   for index = 1, #list.names do
@@ -48,7 +56,7 @@ local PINNED_FROM = "pinnedFrom"
 
 local function meta_line(spec)
   if spec.peerPackagesMeta == nil then return "" end
-  return "      peerPackagesMeta = " .. long_string(spec.peerPackagesMeta) .. ",\n"
+  return "      peerPackagesMeta = " .. exact_string(spec.peerPackagesMeta) .. ",\n"
 end
 
 --- The committed pin file: pnpm's lockfile verbatim, the pinned pnpm, and each package's url and
@@ -71,7 +79,7 @@ local function render(spec, instance, lock_text, entries)
     .. "      optionalPackages = " .. ranges_table(spec.optionalPackages) .. ",\n"
     .. meta_line(spec)
     .. string.format("      pnpm = %q,\n", spec.pnpm.version)
-    .. (spec.overrides == nil and "" or ("      overrides = " .. long_string(spec.overrides) .. ",\n"))
+    .. (spec.overrides == nil and "" or ("      overrides = " .. exact_string(spec.overrides) .. ",\n"))
     .. "    }\n"
     .. "  end\n"
     .. string.format("  local target = toolchains and toolchains[%q]\n", spec.target)
@@ -82,7 +90,7 @@ local function render(spec, instance, lock_text, entries)
                      spec.pnpm.version, spec.pnpm.url, spec.pnpm.sha256)
     .. "      dependencies = " .. ranges_table(spec.packages) .. ",\n"
     .. "      devDependencies = " .. ranges_table(spec.devPackages) .. ",\n"
-    .. (spec.overrides == nil and "" or ("      overrides = " .. long_string(spec.overrides) .. ",\n"))
+    .. (spec.overrides == nil and "" or ("      overrides = " .. exact_string(spec.overrides) .. ",\n"))
     .. "      peerDependencies = " .. ranges_table(spec.peerPackages) .. ",\n"
     .. "      optionalDependencies = " .. ranges_table(spec.optionalPackages) .. ",\n"
     .. meta_line(spec)
