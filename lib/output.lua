@@ -46,6 +46,11 @@ end
 --- generate compares with the ranges written now.
 local PINNED_FROM = "pinnedFrom"
 
+local function meta_line(spec)
+  if spec.peerPackagesMeta == nil then return "" end
+  return "      peerPackagesMeta = " .. long_string(spec.peerPackagesMeta) .. ",\n"
+end
+
 --- The committed pin file: pnpm's lockfile verbatim, the pinned pnpm, and each package's url and
 --- sha256, set on the target toolchain, and what they were resolved from, set on the pnpm block.
 ---
@@ -62,6 +67,9 @@ local function render(spec, instance, lock_text, entries)
     .. "    own." .. PINNED_FROM .. " = {\n"
     .. "      packages = " .. ranges_table(spec.packages) .. ",\n"
     .. "      devPackages = " .. ranges_table(spec.devPackages) .. ",\n"
+    .. "      peerPackages = " .. ranges_table(spec.peerPackages) .. ",\n"
+    .. "      optionalPackages = " .. ranges_table(spec.optionalPackages) .. ",\n"
+    .. meta_line(spec)
     .. string.format("      pnpm = %q,\n", spec.pnpm.version)
     .. (spec.overrides == nil and "" or ("      overrides = " .. long_string(spec.overrides) .. ",\n"))
     .. "    }\n"
@@ -75,6 +83,9 @@ local function render(spec, instance, lock_text, entries)
     .. "      dependencies = " .. ranges_table(spec.packages) .. ",\n"
     .. "      devDependencies = " .. ranges_table(spec.devPackages) .. ",\n"
     .. (spec.overrides == nil and "" or ("      overrides = " .. long_string(spec.overrides) .. ",\n"))
+    .. "      peerDependencies = " .. ranges_table(spec.peerPackages) .. ",\n"
+    .. "      optionalDependencies = " .. ranges_table(spec.optionalPackages) .. ",\n"
+    .. meta_line(spec)
     .. "      entries = {\n"
     .. table.concat(lines, "\n") .. (#lines > 0 and "\n" or "")
     .. "      },\n"
