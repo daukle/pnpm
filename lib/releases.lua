@@ -1,5 +1,6 @@
---- The pnpm releases this plugin runs, each pnpm's own npm tarball pinned by sha256. pnpm runs from
---- `package/bin/pnpm.cjs` with the provisioned node, so one tarball serves every host.
+--- The pnpm releases this plugin runs. Before 12 each is pnpm's own npm tarball pinned by sha256,
+--- run from `package/bin/pnpm.cjs` with the provisioned node, so one tarball serves every host.
+--- From 12 pnpm is a native binary per host, each `@pnpm/exe.<target>` tarball pinned by sha256.
 local releases = {}
 
 local RELEASES = {
@@ -12,16 +13,42 @@ local RELEASES = {
   { version = "11.28.5", sha256 = "1ef4e447a68713656064f3f174c0f44719960a043a3fe2299169d08cf1dbf8ee" },
 }
 
+--- Digests of each `@pnpm/exe.<target>` tarball, by daukle's `os/arch`.
+local NATIVE_RELEASES = {
+  ["12.4.2"] = {
+    ["linux/x86_64"] = "545b89d5c6026ac33d4c28bd3c6cc38cc050d571b35a4e69f13aad4a441af142",
+    ["linux/aarch64"] = "c3bb8caba00f308733b0876d245e1e1f3ad656e6605f4f85dd861457267ae9f2",
+    ["windows/x86_64"] = "d39763e5e85a028fc710df547dcd102b857add88f01e27321916fad13656cb00",
+    ["windows/aarch64"] = "8b7f8153e904d9cb4003edc95ed8ed81eef2ef835fdbe416550e1ad675f5116b",
+    ["macos/x86_64"] = "135624819b30eecad9265a45ae08de4947ee259378d81971df721e72814454a6",
+    ["macos/aarch64"] = "74e32d56a464eca1f2b3dbfc37adb6c017eb6449c455b87be98e7fa620d315af",
+  },
+  ["12.18.0"] = {
+    ["linux/x86_64"] = "679df2eedf158f639db6d1f00e713d766d0d7afc6a931bc51497a625d1e1bdf7",
+    ["linux/aarch64"] = "2e326930b9b670712df1c93849d725c85f6b897cdf9239ee724b587c50ddd5bc",
+    ["windows/x86_64"] = "492a9087c3489069727f7ba03c95faf41651a39f60872c9b4542397b48c45738",
+    ["windows/aarch64"] = "3df31e477305717b457653738a61bc02f5c843b69c13e01ff36873f892b25377",
+    ["macos/x86_64"] = "0c27f789778383d617abec146293db8ad871de119d1747c6177c06363d9bc8fe",
+    ["macos/aarch64"] = "755615cb521051e182a8c1eb80478466b72d0652b2baa36515c99089daabc82e",
+  },
+}
+
+local NATIVE_ORDER = { "12.4.2", "12.18.0" }
+local TARGET_OS = { linux = "linux", macos = "darwin", windows = "win32" }
+local TARGET_ARCH = { x86_64 = "x64", aarch64 = "arm64" }
+
 releases.ENTRY = "package/bin/pnpm.cjs"
 
 local function pinned_versions()
   local out = {}
   for index, release in ipairs(RELEASES) do out[index] = release.version end
+  for _, version in ipairs(NATIVE_ORDER) do out[#out + 1] = version end
   return table.concat(out, ", ")
 end
 
 --- Whether this plugin pins `version`, for a caller that must answer with a blocker, not raise.
 function releases.is_pinned(version)
+  if NATIVE_RELEASES[version] ~= nil then return true end
   for _, release in ipairs(RELEASES) do
     if release.version == version then return true end
   end
@@ -30,8 +57,31 @@ end
 
 releases.pinned_versions = pinned_versions
 
---- The pinned release of `version`, as `{ version, url, sha256 }`. Raises naming the pinned ones.
+--- Each host's binary of a native release, by `os/arch`, as `{ url, sha256, file }`.
+local function native_binaries(version)
+  local binaries = {}
+  for host, sha256 in pairs(NATIVE_RELEASES[version]) do
+    local os, arch = string.match(host, "^(.-)/(.-)$")
+    local target = TARGET_OS[os] .. "-" .. TARGET_ARCH[arch]
+    binaries[host] = { sha256 = sha256, file = os == "windows" and "package/pnpm.exe" or "package/pnpm",
+                       url = "https://registry.npmjs.org/@pnpm/exe." .. target .. "/-/exe." .. target .. "-"
+                             .. version .. ".tgz" }
+  end
+  return binaries
+end
+
+--- The binary of a native release for `host`, a `{ os, arch }`, or a raise naming the host.
+function releases.binary_for(pnpm, host)
+  local binary = pnpm.binaries[tostring(host.os) .. "/" .. tostring(host.arch)]
+  if binary ~= nil then return binary end
+  error(string.format("pnpm %s has no pinned binary for this host (%s %s)", pnpm.version, tostring(host.os),
+                      tostring(host.arch)), 0)
+end
+
+--- The pinned release of `version`, as `{ version, url, sha256 }`, or `{ version, binaries }` for a
+--- native release. Raises naming the pinned ones.
 function releases.of(version)
+  if NATIVE_RELEASES[version] ~= nil then return { version = version, binaries = native_binaries(version) } end
   for _, release in ipairs(RELEASES) do
     if release.version == version then
       return { version = version, sha256 = release.sha256,
