@@ -77,9 +77,24 @@ local function keep(out, entry)
   if finished_entry ~= nil then out[#out + 1] = finished_entry end
 end
 
+--- The project's own document of a lockfile, which is the whole text before pnpm 12 and the last
+--- document from it.
+---
+--- @implNote pnpm 12 puts a document pinning the package manager first; this plugin pins that
+--- release itself, so those packages are not part of the project's closure.
+local function project_document(text)
+  local separator = string.find(text, "\n---\n", 1, true)
+  while separator ~= nil do
+    text = string.sub(text, separator + 5)
+    separator = string.find(text, "\n---\n", 1, true)
+  end
+  return (string.gsub(text, "^%-%-%-\n", ""))
+end
+
 --- Every package of the lockfile's `packages:` block, sorted by key, as
 --- `{ path, name, version, url, integrity, os, cpu, libc }`.
 function lockfile.entries(text)
+  text = project_document(text)
   local version = string.match(text, "^lockfileVersion: '([^']+)'")
   if not is_supported(version) then
     error("the lockfile is version " .. tostring(version) .. ", and this plugin reads versions "

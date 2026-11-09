@@ -20,7 +20,17 @@ local function reads(name, version, packages, wanted)
   end }
 end
 
+local function two_documents()
+  return "---\n" .. lockfile_text("9.0", entry_block("pnpm@12.4.2", INTEGRITY)) .. "\n---\n"
+         .. lockfile_text("9.0", entry_block("a@1.0.0", INTEGRITY))
+end
+
 return {
+  { name = "only the project's document of a two-document lockfile is read", check = function()
+    local rows = {}
+    for index, entry in ipairs(lockfile.entries(two_documents())) do rows[index] = entry.path end
+    return expect.equal(rows, { "a@1.0.0" })
+  end },
   reads("a 6.0 key with several peer groups gives the bare version", "6.0",
     entry_block("/a@1.0.0(b@1.0.0)(c@2.0.0)", INTEGRITY),
     { "a@1.0.0 https://registry.npmjs.org/a/-/a-1.0.0.tgz" }),
