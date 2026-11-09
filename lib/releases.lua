@@ -14,15 +14,10 @@ local RELEASES = {
 }
 
 --- Digests of each `@pnpm/exe.<target>` tarball, by daukle's `os/arch`.
+---
+--- @implNote 12.0 to 12.6 are deliberately absent: measured, they ignore `--modules-dir` for a
+--- project's own modules, so nothing keeps them under `build/`, and a link in its place dangles.
 local NATIVE_RELEASES = {
-  ["12.4.2"] = {
-    ["linux/x86_64"] = "545b89d5c6026ac33d4c28bd3c6cc38cc050d571b35a4e69f13aad4a441af142",
-    ["linux/aarch64"] = "c3bb8caba00f308733b0876d245e1e1f3ad656e6605f4f85dd861457267ae9f2",
-    ["windows/x86_64"] = "d39763e5e85a028fc710df547dcd102b857add88f01e27321916fad13656cb00",
-    ["windows/aarch64"] = "8b7f8153e904d9cb4003edc95ed8ed81eef2ef835fdbe416550e1ad675f5116b",
-    ["macos/x86_64"] = "135624819b30eecad9265a45ae08de4947ee259378d81971df721e72814454a6",
-    ["macos/aarch64"] = "74e32d56a464eca1f2b3dbfc37adb6c017eb6449c455b87be98e7fa620d315af",
-  },
   ["12.18.0"] = {
     ["linux/x86_64"] = "679df2eedf158f639db6d1f00e713d766d0d7afc6a931bc51497a625d1e1bdf7",
     ["linux/aarch64"] = "2e326930b9b670712df1c93849d725c85f6b897cdf9239ee724b587c50ddd5bc",
@@ -33,7 +28,7 @@ local NATIVE_RELEASES = {
   },
 }
 
-local NATIVE_ORDER = { "12.4.2", "12.18.0" }
+local NATIVE_ORDER = { "12.18.0" }
 local TARGET_OS = { linux = "linux", macos = "darwin", windows = "win32" }
 local TARGET_ARCH = { x86_64 = "x64", aarch64 = "arm64" }
 
