@@ -3,7 +3,7 @@ local overrides = daukle.require("lib/overrides")
 local releases = daukle.require("lib/releases")
 
 local KNOWN_KEYS = { version = true, pnpm = true, packages = true, devPackages = true, ["for"] = true,
-                     [output.PINNED_FROM] = true, [overrides.KEY] = true }
+                     [output.PINNED_FROM] = true, [overrides.KEY] = true, workspace = true }
 
 local RESOLVE = '"daukle pnpm:resolve --resolve"'
 local PIN_FILE = "daukle/pnpm/" .. output.OUTPUT
@@ -52,13 +52,37 @@ local function pnpm_of(config)
   return releases.of(config.pnpm)
 end
 
+--- The specifiers only pnpm resolves, and only inside a workspace, which a root's block keeps as written.
+local WORKSPACE_PREFIXES = { "workspace:", "catalog:", "file:" }
+
+local function is_workspace_specifier(range)
+  local lowered = string.lower(range)
+  for _, prefix in ipairs(WORKSPACE_PREFIXES) do
+    if string.sub(lowered, 1, #prefix) == prefix then return true end
+  end
+  return false
+end
+
+--- Whether `workspace` marks this block as a pnpm workspace root's, which daukle/pnpm's translator
+--- writes: its ranges may name the workspace, and its lockfile holds every member.
+local function is_workspace_root(config)
+  local marker = config.workspace
+  if marker ~= nil and marker ~= true then
+    error('"workspace" marks the block of a pnpm workspace root, so it can only be true', 0)
+  end
+  return marker == true
+end
+
 --- @implNote ranges are written into a package.json without a json escaper, so a character that
 --- would need escaping is refused at the edge instead, as daukle/npm refuses it.
-local function checked_range(name, range, key)
+local function checked_range(name, range, key, in_workspace)
   if type(range) ~= "string" then
     error(string.format('%s."%s" must be a version range as a string, not a %s', key, name, type(range)), 0)
   end
   if range == "" then error(string.format('%s."%s" is empty, and pnpm has no empty range', key, name), 0) end
+  if in_workspace and is_workspace_specifier(range) and string.match(range, '^[%w%.%-%+%*~^/:_]+$') ~= nil then
+    return range
+  end
   if string.match(range, '^[%w%s%.%-%+%*|<>=~^%(%)]+$') == nil then
     error(string.format('%s."%s" is "%s", which is not a registry version range: a git, file,'
                         .. ' url, alias, workspace or catalog specifier resolves outside the'
@@ -67,7 +91,7 @@ local function checked_range(name, range, key)
   return range
 end
 
-local function checked_packages(config, key)
+local function checked_packages(config, key, in_workspace)
   local packages = config[key]
   if packages == nil then return {}, {} end
   if type(packages) ~= "table" or #packages > 0 then
@@ -78,19 +102,20 @@ local function checked_packages(config, key)
     if type(name) ~= "string" or (string.match(name, PLAIN) == nil and string.match(name, SCOPED) == nil) then
       error(string.format('"%s" is not a package name: a name is "lodash" or "@scope/name"', tostring(name)), 0)
     end
-    checked_range(name, range, key)
+    checked_range(name, range, key, in_workspace)
     names[#names + 1] = name
   end
   table.sort(names)
   return names, packages
 end
 
---- Checks a block. Returns `{ version, pnpm, target, packages, devPackages, pinnedFrom, overrides }`,
+--- Checks a block. Returns `{ version, pnpm, target, packages, devPackages, pinnedFrom, overrides, workspace }`,
 --- each package list as `{ names = sorted, ranges = name -> range }`.
 local function spec_of(config, version)
   reject_unknown_keys(config)
-  local names, ranges = checked_packages(config, "packages")
-  local dev_names, dev_ranges = checked_packages(config, "devPackages")
+  local in_workspace = is_workspace_root(config)
+  local names, ranges = checked_packages(config, "packages", in_workspace)
+  local dev_names, dev_ranges = checked_packages(config, "devPackages", in_workspace)
   for _, name in ipairs(dev_names) do
     if ranges[name] ~= nil then
       error(string.format('"%s" is in both "packages" and "devPackages", and pnpm keeps one', name), 0)
@@ -104,6 +129,7 @@ local function spec_of(config, version)
     devPackages = { names = dev_names, ranges = dev_ranges },
     pinnedFrom = config[output.PINNED_FROM],
     overrides = overrides.checked(config),
+    workspace = in_workspace,
   }
 end
 

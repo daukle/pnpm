@@ -44,6 +44,15 @@ local function refuse_without_resolve(context)
   end
 end
 
+--- @implNote resolving writes a package.json of this block's ranges alone, so its lockfile would
+--- hold no member's importer and the next frozen install would fail.
+local function refuse_a_workspace_root(spec)
+  if not spec.workspace then return end
+  error("pnpm:resolve resolves one package, and this block is a pnpm workspace root, whose lockfile"
+        .. " also holds every member: re-pinning a workspace is not built, so its pins stay as its"
+        .. " migration wrote them", 0)
+end
+
 --- The provisioned node and the entry script of the pinned pnpm, which that node runs.
 local function provisioned(context, spec)
   local pick = runtimes.for_host{ os = context.host.os, arch = context.host.arch, version = spec.version }
@@ -58,6 +67,7 @@ daukle.task{
   run = function(context)
     refuse_without_resolve(context)
     local spec = settings.read(context)
+    refuse_a_workspace_root(spec)
     local node, pnpm = provisioned(context, spec)
     daukle.write{ path = "package.json", text = manifest.package_json(spec) }
     -- resolving must run none of the closure's code, which a preinstall script would
