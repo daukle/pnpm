@@ -11,4 +11,4 @@ pnpm = "./plugins"
 version = "22.15.0"
 pnpm = "10.34.9"
 workspace = true
-packages = { a = "workspace:*", b = "catalog:", c = "catalog:build_tools", d = "file:packages/c_d" }
+packages = { a = "workspace:>=1.0.0 <2", b = "catalog:", c = "catalog:build_tools", d = "file:packages/c_d" }

@@ -80,7 +80,7 @@ local function checked_range(name, range, key, in_workspace)
     error(string.format('%s."%s" must be a version range as a string, not a %s', key, name, type(range)), 0)
   end
   if range == "" then error(string.format('%s."%s" is empty, and pnpm has no empty range', key, name), 0) end
-  if in_workspace and is_workspace_specifier(range) and string.match(range, '^[%w%.%-%+%*~^/:_]+$') ~= nil then
+  if in_workspace and is_workspace_specifier(range) and string.match(range, '^[%w%s%.%-_%+%*|<>=~^%(%)/:#@]+$') ~= nil then
     return range
   end
   if string.match(range, '^[%w%s%.%-%+%*|<>=~^%(%)]+$') == nil then
