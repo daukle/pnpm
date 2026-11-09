@@ -53,13 +53,22 @@ local function refuse_a_workspace_root(spec)
         .. " migration wrote them", 0)
 end
 
---- The provisioned node and the entry script of the pinned pnpm, which that node runs.
-local function provisioned(context, spec)
+--- The tool that runs the pinned pnpm and the words before pnpm's own: its native binary from 12,
+--- otherwise the provisioned node and pnpm's entry script.
+local function pnpm_command(context, spec, node)
+  if spec.pnpm.binaries ~= nil then
+    local binary = releases.binary_for(spec.pnpm, context.host)
+    local root = daukle.provision{ url = binary.url, sha256 = binary.sha256, as = "pnpm " .. spec.pnpm.version }
+    return root:tool(binary.file), {}
+  end
+  local root = daukle.provision{ url = spec.pnpm.url, sha256 = spec.pnpm.sha256, as = "pnpm " .. spec.pnpm.version }
+  return node, { root:path(releases.ENTRY) }
+end
+
+local function provisioned_node(context, spec)
   local pick = runtimes.for_host{ os = context.host.os, arch = context.host.arch, version = spec.version }
-  local node_root = daukle.provision{ url = pick.url, sha256 = pick.sha256, as = "node " .. pick.version }
-  local pnpm_root = daukle.provision{ url = spec.pnpm.url, sha256 = spec.pnpm.sha256,
-                                      as = "pnpm " .. spec.pnpm.version }
-  return node_root:tool(pick.node), pnpm_root:path(releases.ENTRY)
+  local root = daukle.provision{ url = pick.url, sha256 = pick.sha256, as = "node " .. pick.version }
+  return root:tool(pick.node)
 end
 
 daukle.task{
@@ -68,10 +77,14 @@ daukle.task{
     refuse_without_resolve(context)
     local spec = settings.read(context)
     refuse_a_workspace_root(spec)
-    local node, pnpm = provisioned(context, spec)
+    local node = provisioned_node(context, spec)
+    local pnpm, argv = pnpm_command(context, spec, node)
     daukle.write{ path = "package.json", text = manifest.package_json(spec) }
     -- resolving must run none of the closure's code, which a preinstall script would
-    daukle.exec(node, { pnpm, "install", "--lockfile-only", "--ignore-scripts", "--store-dir", "pnpm-store" })
+    for _, word in ipairs({ "install", "--lockfile-only", "--ignore-scripts", "--store-dir", "pnpm-store" }) do
+      argv[#argv + 1] = word
+    end
+    daukle.exec(pnpm, argv)
     local lock_text = daukle.exec(node, { "-e", PRINT_LOCK }, { capture = true }).stdout
     return daukle.write{ path = output.OUTPUT,
                          text = pinning.pin_file(spec, context.toolchain.name, lock_text),

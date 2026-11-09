@@ -17,7 +17,8 @@ packages = { vuepress = "2.0.0-rc.20" }
 ```
 
 `pnpm` names a release this plugin pins, as a project's `"packageManager": "pnpm@<version>"` does;
-pnpm runs from its own npm tarball on the provisioned node, so no corepack is involved. `overrides`
+pnpm runs from its own npm tarball on the provisioned node, or from 12 as the native binary pinned
+for each host, so no corepack is involved. `overrides`
 is pnpm's override object as JSON text, written where pnpm reads it, `pnpm.overrides`.
 
 `peerPackages` and `optionalPackages` are package name to range, as `packages` is, and
