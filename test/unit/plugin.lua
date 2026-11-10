@@ -4,8 +4,9 @@ daukle.toolchain{ name = "unit", generate = function() return {} end }
 
 local SUITES = {
   lockfile_test = daukle.require("tests/lockfile_test"),
+  workspace_test = daukle.require("tests/workspace_test"),
 }
-local SUITE_ORDER = { "lockfile_test" }
+local SUITE_ORDER = { "lockfile_test", "workspace_test" }
 
 daukle.task{
   name = "unit:test",

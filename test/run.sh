@@ -88,7 +88,37 @@ expect_pins() {
     return
   fi
   expect_after_an_edit || return 0
+  expect_a_re_pin "$@" || return 0
   passed=$((passed + 1))
+}
+
+# edit.toml replaces daukle.toml and is resolved again: expect-edit-contains.txt is what the new
+# pins must carry, and after-edit-task a task that must then succeed against them.
+expect_a_re_pin() {
+  [ -f "$case_dir/edit.toml" ] || return 0
+  cp "$case_dir/edit.toml" "$sandbox/daukle.toml"
+  # A re-pin often runs on a fresh clone, so only the committed pins may carry the old lockfile.
+  rm -rf "$sandbox/build"
+  if ! (cd "$sandbox" && "$daukle" "$@" </dev/null >edit.txt 2>edit-stderr.txt); then
+    cat "$sandbox/edit-stderr.txt" >&2
+    fail "$name" "resolving after the edit failed"
+    return 1
+  fi
+  while IFS= read -r literal || [ -n "$literal" ]; do
+    [ -n "$literal" ] || continue
+    if ! grep -qF "$literal" "$sandbox/daukle/pnpm/lock.lua"; then
+      fail "$name" "lock.lua does not carry after the edit: $literal"
+      return 1
+    fi
+  done < "$case_dir/expect-edit-contains.txt"
+  # Unquoted on purpose: the task line carries its flags.
+  # shellcheck disable=SC2046
+  if ! (cd "$sandbox" && "$daukle" $(cat "$case_dir/after-edit-task") </dev/null >after.txt 2>after-stderr.txt); then
+    cat "$sandbox/after-stderr.txt" >&2
+    fail "$name" "the task after the re-pin failed"
+    return 1
+  fi
+  return 0
 }
 
 # then.toml replaces daukle.toml after the resolve, and expect-then-error.txt is

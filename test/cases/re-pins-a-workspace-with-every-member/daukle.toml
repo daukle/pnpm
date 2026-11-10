@@ -1,0 +1,53 @@
+schema = 1
+project = "daukle/pnpm-test"
+version = "1.0.0"
+
+[modules]
+
+[plugins]
+pnpm = "./plugins"
+node = { url = "https://github.com/daukle/node/releases/download/4.26.1/plugin.lua", sha256 = "939d75d93d1fb50eb49f4efee4d94fcb68704ad25d5d6e40099a6058e7c55b7d" }
+
+[toolchains.node]
+version = "22.15.0"
+
+[toolchains.node.packageFields]
+name = '"root-pkg"'
+version = '"3.0.0"'
+dependenciesMeta = '{"is-number": {"injected": true}}'
+
+[toolchains.node.workspace.members]
+"packages/a" = "node-packages-a"
+"packages/b" = "node-packages-b"
+
+[toolchains.node-packages-a]
+version = "22.15.0"
+workspace = "node"
+toolchain = "node"
+dir = "packages/a"
+
+[toolchains.node-packages-a.packages]
+b = "workspace:*"
+root-pkg = "workspace:*"
+ms = "2.0.0"
+
+[toolchains.node-packages-b]
+version = "22.15.0"
+workspace = "node"
+toolchain = "node"
+dir = "packages/b"
+
+[toolchains.node-packages-b.packageFields]
+name = '"b"'
+version = '"1.0.0"'
+
+[toolchains.node-packages-b.packages]
+semver = "7.6.2"
+
+[toolchains.pnpm]
+version = "22.15.0"
+pnpm = "10.34.9"
+workspace = true
+
+[toolchains.pnpm.packages]
+is-number = "7.0.0"
