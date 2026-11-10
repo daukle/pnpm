@@ -61,6 +61,16 @@ local function root_identity(target, names)
   return daukle.json_parse(daukle.read(generated_path(target, "package.json")))
 end
 
+--- The workspace file with the block's own overrides line in place of the one daukle/node rendered
+--- from the pins being replaced, which pnpm 11 and 12 would otherwise resolve against (D-285).
+--- @implNote daukle/node writes that line as one `overrides: {...}` flow line and refuses it beside a
+--- carried `overrides:` setting, so a block-form `overrides:` here is the user's and is kept.
+local function with_current_overrides(workspace_text, spec)
+  local text = string.gsub(workspace_text, "\noverrides: {[^\n]*\n", "\n")
+  if spec.overrides == nil or not manifest.reads_workspace_settings(spec.pnpm.version) then return text end
+  return text .. manifest.workspace_overrides(spec)
+end
+
 --- Rebuilds the workspace to resolve in `DIRECTORY`: this block's root ranges, each member's and
 --- the workspace file as daukle/node generated them, its patch files and the lockfile it pinned.
 ---
@@ -73,7 +83,7 @@ local function write(context, spec)
     error('pnpm:resolve re-pins a workspace from what daukle/node generates for "' .. spec.target
           .. '", and that toolchain generated no workspace: "for" names it, and it needs a "workspace" key', 0)
   end
-  local workspace_text = daukle.read(generated_path(spec.target, WORKSPACE_FILE))
+  local workspace_text = with_current_overrides(daukle.read(generated_path(spec.target, WORKSPACE_FILE)), spec)
   write_file("package.json", manifest.package_json(spec, root_identity(spec.target, names), carried_fields(spec.target)))
   write_file("pnpm-workspace.yaml", workspace_text)
   if names[LOCKFILE] then write_file(LOCKFILE, daukle.read(generated_path(spec.target, LOCKFILE))) end
