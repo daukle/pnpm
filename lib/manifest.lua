@@ -13,18 +13,43 @@ local function optional_list(field, list)
   return ',\n  "' .. field .. '": ' .. json_object(list)
 end
 
---- The package.json pnpm resolves the closure from: the block's ranges and overrides and nothing
---- else, private so pnpm asks for no name. pnpm reads its overrides from `pnpm.overrides`.
-local function package_json(spec)
+local function identity_members(identity)
+  local members = ""
+  for _, field in ipairs({ "name", "version" }) do
+    if identity ~= nil and identity[field] ~= nil then
+      members = members .. string.format('  "%s": "%s",\n', field, identity[field])
+    end
+  end
+  return members
+end
+
+--- Each field daukle/node carries on a workspace root as its raw JSON text, as members of a file.
+local function carried_members(carried)
+  local names = {}
+  for name in pairs(carried or {}) do
+    if name ~= "name" and name ~= "version" then names[#names + 1] = name end
+  end
+  table.sort(names)
+  local members = ""
+  for _, name in ipairs(names) do members = members .. string.format(',\n  "%s": %s', name, carried[name]) end
+  return members
+end
+
+--- The package.json pnpm resolves the closure from: the block's ranges and overrides, private so
+--- pnpm asks for no name, and for a workspace root its `identity`, which a member's `workspace:`
+--- range may name, and the fields daukle/node `carried` into the root it renders, since a frozen
+--- install compares some of them with the lockfile. pnpm reads its overrides from `pnpm.overrides`.
+local function package_json(spec, identity, carried)
   local overrides = spec.overrides == nil and "" or (',\n  "pnpm": { "overrides": ' .. spec.overrides .. ' }')
   return '{\n'
+    .. identity_members(identity)
     .. '  "private": true,\n'
     .. '  "dependencies": ' .. json_object(spec.packages) .. ',\n'
     .. '  "devDependencies": ' .. json_object(spec.devPackages)
     .. optional_list("peerDependencies", spec.peerPackages)
     .. optional_list("optionalDependencies", spec.optionalPackages)
     .. (spec.peerPackagesMeta == nil and "" or (',\n  "peerDependenciesMeta": ' .. spec.peerPackagesMeta))
-    .. overrides .. '\n'
+    .. overrides .. carried_members(carried) .. '\n'
     .. '}\n'
 end
 

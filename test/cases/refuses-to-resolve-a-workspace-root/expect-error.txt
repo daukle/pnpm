@@ -1,1 +1,0 @@
-and this block is a pnpm workspace root
