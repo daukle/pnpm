@@ -13,11 +13,23 @@ local function optional_list(field, list)
   return ',\n  "' .. field .. '": ' .. json_object(list)
 end
 
---- The package.json pnpm resolves the closure from: the block's ranges and overrides and nothing
---- else, private so pnpm asks for no name. pnpm reads its overrides from `pnpm.overrides`.
-local function package_json(spec)
+local function identity_members(identity)
+  local members = ""
+  for _, field in ipairs({ "name", "version" }) do
+    if identity ~= nil and identity[field] ~= nil then
+      members = members .. string.format('  "%s": "%s",\n', field, identity[field])
+    end
+  end
+  return members
+end
+
+--- The package.json pnpm resolves the closure from: the block's ranges and overrides, private so
+--- pnpm asks for no name, and a workspace root's `identity`, which a member's `workspace:` range
+--- may name. pnpm reads its overrides from `pnpm.overrides`.
+local function package_json(spec, identity)
   local overrides = spec.overrides == nil and "" or (',\n  "pnpm": { "overrides": ' .. spec.overrides .. ' }')
   return '{\n'
+    .. identity_members(identity)
     .. '  "private": true,\n'
     .. '  "dependencies": ' .. json_object(spec.packages) .. ',\n'
     .. '  "devDependencies": ' .. json_object(spec.devPackages)
