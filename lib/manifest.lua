@@ -53,4 +53,30 @@ local function package_json(spec, identity, carried)
     .. '}\n'
 end
 
-return { package_json = package_json }
+--- The `overrides:` line of the `pnpm-workspace.yaml` beside the resolve, `{}` when the block has none,
+--- so a later run never reads overrides an earlier one left in the derived directory.
+---
+--- @implNote pnpm 11 and 12 read overrides only from the workspace file and ignore
+--- `pnpm.overrides`, measured 2026-11-10 (D-285). The JSON text is a YAML flow mapping, and a
+--- newline is never inside a JSON string, so joining the lines keeps it one valid flow value.
+local function workspace_overrides(spec)
+  if spec.overrides == nil then return "overrides: {}\n" end
+  return "overrides: " .. string.gsub(spec.overrides, "%s*\r?\n%s*", " ") .. "\n"
+end
+
+local WORKSPACE_FILE = "pnpm-workspace.yaml"
+
+--- Whether this pnpm reads settings from a `pnpm-workspace.yaml` that declares no `packages`.
+--- @implNote measured 2026-11-10: 9.15.9 refuses such a file ("packages field missing or empty"),
+--- 8.9.2 ignores it, and 10.34.9, 11.28.5 and 12.18.0 read its overrides.
+local function reads_workspace_settings(version)
+  return tonumber(string.match(version, "^(%d+)")) >= 10
+end
+
+return {
+  package_json = package_json,
+  workspace_overrides = workspace_overrides,
+  reads_workspace_settings = reads_workspace_settings,
+  WORKSPACE_FILE = WORKSPACE_FILE,
+  REMOVE_WORKSPACE_FILE = "require('fs').rmSync('" .. WORKSPACE_FILE .. "', { force: true })",
+}

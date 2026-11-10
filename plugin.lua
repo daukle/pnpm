@@ -67,6 +67,11 @@ end
 local function write_resolve_input(context, spec, node)
   if not spec.workspace then
     daukle.write{ path = "package.json", text = manifest.package_json(spec) }
+    if manifest.reads_workspace_settings(spec.pnpm.version) then
+      daukle.write{ path = manifest.WORKSPACE_FILE, text = manifest.workspace_overrides(spec) }
+    else
+      daukle.exec(node, { "-e", manifest.REMOVE_WORKSPACE_FILE })
+    end
     return nil, "pnpm-store"
   end
   daukle.exec(node, { "-e", workspace.CLEAR_SCRIPT })
