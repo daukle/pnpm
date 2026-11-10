@@ -26,9 +26,10 @@ local function patch_files(workspace_text)
   for line in string.gmatch(workspace_text .. "\n", "([^\n]*)\n") do
     if string.match(line, "^%S") then
       inside = string.match(line, "^patchedDependencies:") ~= nil
-    elseif inside then
-      local file = string.match(line, ":%s*[\"']?([^\"']+)[\"']?%s*$")
-      if file ~= nil then files[#files + 1] = file end
+    elseif inside and string.match(line, "^%s*#") == nil then
+      local value = string.match((string.gsub(line, "%s+#.*$", "")), ".*:%s+(.-)%s*$")
+      local file = value and string.match(value, "^[\"']?(.-)[\"']?$")
+      if file ~= nil and file ~= "" then files[#files + 1] = file end
     end
   end
   return files
@@ -45,6 +46,14 @@ end
 
 local function write_file(name, text)
   daukle.write{ path = DIRECTORY .. "/" .. name, text = text }
+end
+
+--- The fields daukle/node carries on the root, read from the manifest because this block does not
+--- hold them. A project whose only manifest is `daukle.lua` has no declarative text to read.
+local function carried_fields(target)
+  if string.match(daukle.manifest, "%.toml$") == nil then return nil end
+  local toolchains = daukle.parse(daukle.read(daukle.manifest), daukle.manifest).toolchains or {}
+  return toolchains[target] ~= nil and toolchains[target].packageFields or nil
 end
 
 local function root_identity(target, names)
@@ -65,7 +74,7 @@ local function write(context, spec)
           .. '", and that toolchain generated no workspace: "for" names it, and it needs a "workspace" key', 0)
   end
   local workspace_text = daukle.read(generated_path(spec.target, WORKSPACE_FILE))
-  write_file("package.json", manifest.package_json(spec, root_identity(spec.target, names)))
+  write_file("package.json", manifest.package_json(spec, root_identity(spec.target, names), carried_fields(spec.target)))
   write_file("pnpm-workspace.yaml", workspace_text)
   if names[LOCKFILE] then write_file(LOCKFILE, daukle.read(generated_path(spec.target, LOCKFILE))) end
   local placements = daukle.json_parse(daukle.read(generated_path(spec.target, PLACEMENTS_FILE)))
@@ -77,4 +86,7 @@ local function write(context, spec)
   end
 end
 
-return { DIRECTORY = DIRECTORY, write = write }
+--- Empties `DIRECTORY`, so only the committed pins can seed a resolve.
+local CLEAR_SCRIPT = "require('fs').rmSync('" .. DIRECTORY .. "', { recursive: true, force: true })"
+
+return { DIRECTORY = DIRECTORY, CLEAR_SCRIPT = CLEAR_SCRIPT, patch_files = patch_files, write = write }

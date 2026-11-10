@@ -6,7 +6,7 @@
 
 daukle.plugin{
   api = 8,
-  uses = { "provision", "exec", "write", "pin", "json_parse", "read", "list" },
+  uses = { "provision", "exec", "write", "pin", "json_parse", "read", "list", "parse" },
   --[[ The node release table is daukle/node's and is read rather than copied, so pnpm runs on the
        same node as the build. lib/runtimes calls no verb, so the rule that a required module runs
        under the DEPENDENT's uses has nothing to cover. ]]
@@ -64,11 +64,12 @@ local function provisioned_node(context, spec)
 end
 
 --- Writes what pnpm resolves from, and returns where to run it and its store from there.
-local function write_resolve_input(context, spec)
+local function write_resolve_input(context, spec, node)
   if not spec.workspace then
     daukle.write{ path = "package.json", text = manifest.package_json(spec) }
     return nil, "pnpm-store"
   end
+  daukle.exec(node, { "-e", workspace.CLEAR_SCRIPT })
   workspace.write(context, spec)
   return "build/daukle/" .. context.toolchain.name .. "/" .. workspace.DIRECTORY, "../pnpm-store"
 end
@@ -80,7 +81,7 @@ daukle.task{
     local spec = settings.read(context)
     local node = provisioned_node(context, spec)
     local pnpm, argv = pnpm_command(context, spec, node)
-    local cwd, store = write_resolve_input(context, spec)
+    local cwd, store = write_resolve_input(context, spec, node)
     -- resolving must run none of the closure's code, which a preinstall script would; a CI
     -- environment would otherwise freeze the lockfile a workspace resolve starts from
     for _, word in ipairs({ "install", "--lockfile-only", "--ignore-scripts", "--no-frozen-lockfile", "--store-dir", store }) do
